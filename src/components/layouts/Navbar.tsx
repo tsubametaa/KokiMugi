@@ -43,7 +43,15 @@ export default function Navbar() {
         </Link>
 
         {/* Call to action button */}
-        <Button variant="tiramisu" size="sm">Coba AI Sekarang</Button>
+        <Button 
+          variant="tiramisu" 
+          size="sm"
+          onClick={() => {
+            document.getElementById("recommendation-section")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
+          Coba AI Sekarang
+        </Button>
       </div>
     </motion.header>
   );

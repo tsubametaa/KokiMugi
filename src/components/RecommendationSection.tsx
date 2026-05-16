@@ -15,98 +15,17 @@ import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { generateRecipes } from "@/app/actions/recipe";
 
-// Mock Data to simulate Gemma AI Response
-const MOCK_RECOMMENDATIONS = [
-  {
-    id: "rec-1",
-    name: "Classic French Macaron",
-    description:
-      "Delicate, sweet meringue-based confection made with egg white, icing sugar, granulated sugar, almond meal, and food coloring.",
-    image: "/assets/cake/macaron.svg",
-    prepTime: "90 mins",
-    difficulty: "Hard",
-    servings: "24 cookies",
-    ingredients: [
-      "1 ¾ cups powdered sugar",
-      "1 cup almond flour, finely ground",
-      "1 teaspoon salt, divided",
-      "3 egg whites, at room temperature",
-      "¼ cup granulated sugar",
-      "½ teaspoon vanilla extract",
-      "2 drops pink gel food coloring",
-    ],
-    procedure: [
-      "Sift powdered sugar, almond flour, and ½ teaspoon salt together twice.",
-      "Beat egg whites and remaining ½ teaspoon salt until soft peaks form.",
-      "Gradually add granulated sugar, beating until stiff peaks form.",
-      "Add vanilla and food coloring; beat until combined.",
-      "Fold dry mixture into egg whites gently until it flows like lava.",
-      "Pipe 1-inch circles onto a parchment-lined baking sheet.",
-      "Tap sheet to release air bubbles. Let sit for 30 mins until skin forms.",
-      "Bake at 300°F (150°C) for 17 minutes.",
-    ],
-  },
-  {
-    id: "rec-2",
-    name: "Berry Fruit Pie",
-    description:
-      "A classic dessert made with a flaky buttery crust and a sweet, tart filling of fresh summer berries.",
-    image: "/assets/cake/pie-fruit.svg",
-    prepTime: "120 mins",
-    difficulty: "Medium",
-    servings: "8 slices",
-    ingredients: [
-      "1 package (14.1 oz) refrigerated pie crusts",
-      "4 cups mixed fresh berries (strawberries, blueberries, raspberries)",
-      "¾ cup granulated sugar",
-      "¼ cup cornstarch",
-      "1 tablespoon lemon juice",
-      "1 beaten egg (for egg wash)",
-    ],
-    procedure: [
-      "Preheat oven to 400°F (200°C).",
-      "Unroll 1 pie crust into a 9-inch pie plate.",
-      "In a large bowl, toss berries, sugar, cornstarch, and lemon juice.",
-      "Pour berry mixture into the crust.",
-      "Top with second crust, flute edges, and cut slits for steam.",
-      "Brush crust with beaten egg.",
-      "Bake for 45-50 minutes until golden and filling is bubbly.",
-      "Cool completely before slicing.",
-    ],
-  },
-  {
-    id: "rec-3",
-    name: "Authentic Tiramisu",
-    description:
-      "An elegant and rich layered Italian dessert made with delicate ladyfinger cookies, espresso, and mascarpone cheese.",
-    image: "/assets/cake/tiramisu.svg",
-    prepTime: "40 mins",
-    difficulty: "Medium",
-    servings: "6 servings",
-    ingredients: [
-      "6 egg yolks",
-      "¾ cup white sugar",
-      "⅔ cup milk",
-      "1 ¼ cups heavy cream",
-      "½ teaspoon vanilla extract",
-      "1 pound mascarpone cheese",
-      "¼ cup strong brewed espresso, cooled",
-      "2 tablespoons dark rum",
-      "2 (3 oz) packages ladyfinger cookies",
-      "1 tablespoon unsweetened cocoa powder",
-    ],
-    procedure: [
-      "Whisk egg yolks and sugar together in a saucepan. Whisk in milk and cook over medium heat until it boils. Boil gently for 1 minute, remove from heat and let cool tightly covered.",
-      "Whip heavy cream with vanilla until stiff peaks form.",
-      "Whisk mascarpone into the cooled yolk mixture until smooth. Fold in whipped cream.",
-      "Combine espresso and rum. Quickly dip ladyfingers into coffee mixture.",
-      "Layer half of the ladyfingers in the bottom of a 7x11 inch dish.",
-      "Spread half of the mascarpone mixture over ladyfingers.",
-      "Repeat layers and dust with cocoa powder.",
-      "Refrigerate for at least 4 hours before serving.",
-    ],
-  },
-];
+interface Recipe {
+  id: string;
+  name: string;
+  description: string;
+  image?: string;
+  prepTime: string;
+  difficulty: string;
+  servings: string;
+  ingredients: string[];
+  procedure: string[];
+}
 
 // Accordion Component
 function Accordion({
@@ -267,9 +186,9 @@ const MYSTERY_CARDS = [
 
 export default function RecommendationSection() {
   const [isLoading, setIsLoading] = useState(false);
-  const [recommendations, setRecommendations] = useState<
-    typeof MOCK_RECOMMENDATIONS | null
-  >(null);
+  const [recommendations, setRecommendations] = useState<Recipe[] | null>(
+    null,
+  );
   const [userInput, setUserInput] = useState("");
 
   const handleGetRecommendations = async () => {
@@ -294,7 +213,7 @@ export default function RecommendationSection() {
   };
 
   return (
-    <section className="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-primary-50">
+    <section id="recommendation-section" className="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-primary-50">
       {/* Wave Top Layer connecting from AboutSection */}
       <div className="absolute top-0 left-0 w-full z-0 pointer-events-none leading-[0]">
         <img
