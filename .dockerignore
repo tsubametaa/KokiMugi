@@ -1,0 +1,66 @@
+# ============================================================
+# .dockerignore — KokiMugi
+# Mengurangi build context Docker agar build lebih cepat
+# dan tidak ada file sensitif yang masuk ke image
+# ============================================================
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (akan di-install ulang oleh Docker)
+node_modules
+.pnp
+.pnp.*
+
+# Next.js build output (akan di-build ulang)
+.next
+out
+
+# Environment files — JANGAN pernah masukkan ke image!
+.env
+.env.*
+!.env.example
+
+# Development & debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# Testing
+coverage
+.nyc_output
+
+# IDE & editor
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# TypeScript build info (besar, tidak dibutuhkan)
+*.tsbuildinfo
+
+# Docker files (tidak perlu copy ke dalam container)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+docker-compose*.yml
+.dockerignore
+
+# CI/CD configs
+cloudbuild.yaml
+.github
+.gitlab-ci.yml
+
+# Docs
+README.md
+CHANGELOG.md
+docs/
+
+# Vercel
+.vercel

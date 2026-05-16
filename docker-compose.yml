@@ -1,0 +1,43 @@
+services:
+  kokimugi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner # Build sampai stage production
+
+    container_name: kokimugi-app
+
+    # Port mapping: host:container
+    # Akses via http://localhost:3000
+    ports:
+      - "3000:8080"
+
+    # Environment variables untuk runtime
+    # Di Cloud Run ini akan diset melalui Secret Manager / env vars
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+
+    # Inject dari file .env.local untuk testing lokal
+    # JANGAN commit file .env ke git!
+    env_file:
+      - .env.local
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Resource limits (simulasi Cloud Run limits)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
