@@ -15,6 +15,12 @@
 
 Aplikasi ini dikembangkan secara penuh menggunakan **Gemini 3.1 Pro**, memastikan setiap baris kode dan elemen desain memiliki kualitas terbaik dan efisiensi tinggi, sejalan dengan semangat **#JuaraVibeCoding**.
 
+<p align="center">
+  <img src="public/assets/markdown/mugi.png" alt="Sosok Koki Mugi" width="400">
+  <br>
+  <i>Inilah sosok Koki Mugi, sang ahli baking yang akan memandu petualangan kuliner Anda.</i>
+</p>
+
 ### ✨ Preview Output
 
 <p align="center">
