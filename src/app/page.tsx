@@ -11,7 +11,7 @@ export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between">
+    <main className="flex min-h-screen flex-col items-stretch justify-between">
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
       
       <div
