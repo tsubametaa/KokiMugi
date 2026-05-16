@@ -48,7 +48,7 @@ Bagaimana KokiMugi bekerja? Berikut adalah alur cerdas dari input pengguna hingg
 graph TD
     A[👤 User Input: 'Eclair Cokelat Lumer'] --> B(🌐 Next.js Frontend)
     B --> C{✨ AI Engine}
-    C -->|Prompt Engineering| D[🚀 Gemini 3.1 Pro]
+    C -->|Prompt Engineering| D[🚀 Gemini 2.5 Fast]
     D -->|Structured JSON| E[🍱 Recipe Crafter]
     E --> F[🎨 Visual UI: 3D Elements & Bento Grid]
     F --> G[🎂 Premium Recipe Output]
@@ -114,6 +114,6 @@ Pastikan Anda memiliki [Bun](https://bun.sh/) terinstal di sistem Anda.
 ---
 
 <p align="center">
-  <b>#JuaraVibeCoding | KokiMugi Developer Team</b><br>
+  <b>#JuaraVibeCoding | KokiMugi by Utaaa</b><br>
   <i>"Di mana data bertemu rasa."</i>
 </p>
