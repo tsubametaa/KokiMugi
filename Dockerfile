@@ -44,7 +44,7 @@ WORKDIR /app
 # Security: jalankan sebagai non-root user
 # Cloud Run by default mengizinkan non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+  adduser --system --uid 1001 nextjs
 
 # Set environment produksi
 ENV NODE_ENV=production
