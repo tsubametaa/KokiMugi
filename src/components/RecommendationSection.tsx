@@ -1,25 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   ChefHat,
   Clock,
   Users,
-  ChevronDown,
   Flame,
   RotateCcw,
+  ImageOff,
+  Eye,
+  BookOpen,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
-import { Button } from "@/components/ui/Button";
 import { generateRecipes } from "@/app/actions/recipe";
+import RecipeModal from "@/components/RecipeModal";
+import { Button } from "@/components/ui/Button";
+
 
 interface Recipe {
   id: string;
   name: string;
   description: string;
-  image?: string;
+  imageUrl?: string;
+  imagePrompt?: string;
   prepTime: string;
   difficulty: string;
   servings: string;
@@ -27,142 +33,54 @@ interface Recipe {
   procedure: string[];
 }
 
-// Accordion Component
-function Accordion({
-  title,
-  items,
-  isList = false,
-  icon: Icon,
-}: {
-  title: string;
-  items: string[];
-  isList?: boolean;
-  icon: any;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border-b border-primary-100/60 last:border-0 overflow-hidden transition-all duration-300">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-3.5 text-left focus:outline-none group"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary-50 rounded-xl text-primary-500 group-hover:bg-primary-100 transition-colors">
-            <Icon size={18} />
-          </div>
-          <span className="font-bold text-foreground text-[15px] group-hover:text-primary-600 transition-colors">
-            {title}
-          </span>
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-          className="text-primary-300 group-hover:text-primary-500"
-        >
-          <ChevronDown size={20} />
-        </motion.div>
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="pb-5 pt-1 px-1">
-              {isList ? (
-                <ol className="list-decimal list-outside ml-5 space-y-3 text-foreground/80 text-[13px]">
-                  {items.map((item, i) => (
-                    <li key={i} className="pl-2 leading-relaxed">
-                      {item}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <ul className="space-y-3 text-foreground/80 text-[13px]">
-                  {items.map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary-300 mt-1.5 shrink-0" />
-                      <span className="leading-relaxed">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
 const FLOATING_ITEMS = [
   {
     src: "/assets/cake/apple-pie.svg",
     left: "8%",
     top: "15%",
-    delay: 0,
-    duration: 18,
-    size: 90,
+    size: 80,
   },
   {
     src: "/assets/cake/macaron.svg",
     left: "82%",
     top: "10%",
-    delay: 2,
-    duration: 22,
-    size: 70,
+    size: 60,
   },
   {
     src: "/assets/cake/eclair.svg",
     left: "15%",
     top: "55%",
-    delay: 1,
-    duration: 20,
-    size: 85,
+    size: 75,
   },
   {
     src: "/assets/cake/cheesecake.svg",
     left: "78%",
     top: "60%",
-    delay: 3,
-    duration: 24,
-    size: 100,
+    size: 90,
   },
   {
     src: "/assets/cake/madeleine.svg",
     left: "5%",
     top: "85%",
-    delay: 0.5,
-    duration: 19,
-    size: 75,
+    size: 65,
   },
   {
     src: "/assets/cake/tiramisu.svg",
     left: "88%",
     top: "85%",
-    delay: 2.5,
-    duration: 23,
-    size: 95,
+    size: 85,
   },
   {
     src: "/assets/cake/pie-fruit.svg",
     left: "35%",
     top: "90%",
-    delay: 4,
-    duration: 21,
-    size: 110,
+    size: 100,
   },
   {
     src: "/assets/cake/roll-cake.svg",
     left: "65%",
     top: "15%",
-    delay: 1.5,
-    duration: 25,
-    size: 105,
+    size: 95,
   },
 ];
 
@@ -184,342 +102,493 @@ const MYSTERY_CARDS = [
   },
 ];
 
+// Recipe Card Component with internal tab navigation
+function RecipeCard({
+  recipe,
+  index,
+  onOpenModal,
+}: {
+  recipe: Recipe;
+  index: number;
+  onOpenModal: (recipe: Recipe) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<"info" | "ingredients" | "procedure">("info");
+
+  const lower = recipe.difficulty.toLowerCase();
+  const isEasy =
+    lower.includes("easy") ||
+    lower.includes("mudah") ||
+    lower.includes("pemula");
+  const isHard =
+    lower.includes("hard") ||
+    lower.includes("sulit") ||
+    lower.includes("lanjut");
+  const diffColor = isEasy
+    ? "text-emerald-600"
+    : isHard
+      ? "text-red-500"
+      : "text-amber-600";
+      
+  const diffBg = isEasy
+    ? "bg-emerald-50 border-emerald-100"
+    : isHard
+      ? "bg-red-50 border-red-100"
+      : "bg-amber-50 border-amber-100";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        delay: index * 0.08,
+        duration: 0.35,
+        ease: "easeOut",
+      }}
+      className="bg-white rounded-3xl border border-primary-100/50 overflow-hidden flex flex-col h-[560px] transition-all duration-300 hover:shadow-md cursor-default"
+    >
+      {/* ── Food Image ── */}
+      <div
+        className="relative w-full h-[160px] overflow-hidden cursor-pointer bg-primary-50/50"
+        onClick={() => onOpenModal(recipe)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && onOpenModal(recipe)}
+        aria-label={`Lihat detail resep ${recipe.name}`}
+      >
+        {recipe.imageUrl ? (
+          <Image
+            src={recipe.imageUrl}
+            alt={recipe.name}
+            fill
+            className="object-cover transition-transform duration-500 hover:scale-105 animate-fade-in"
+            unoptimized={true}
+            onError={() => {
+              console.error(`Failed to load image for ${recipe.name}`);
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-primary-50 to-primary-100/50">
+            <ImageOff size={22} className="text-primary-300" />
+            <p className="text-primary-400 text-[10px] font-semibold">
+              Foto tidak tersedia
+            </p>
+          </div>
+        )}
+        
+        {/* Difficulty Badge overlay on image */}
+        <span className={`absolute top-3 right-3 px-2.5 py-0.5 rounded-full border text-[10px] font-extrabold ${diffColor} ${diffBg} shadow-sm z-10`}>
+          {recipe.difficulty}
+        </span>
+      </div>
+
+      {/* ── Card Body ── */}
+      <div className="p-5 flex flex-col flex-1 overflow-hidden">
+        {/* Title */}
+        <button
+          onClick={() => onOpenModal(recipe)}
+          className="text-left mb-1.5 focus:outline-none cursor-pointer"
+          aria-label={`Buka detail resep ${recipe.name}`}
+        >
+          <h3 className="text-lg font-black text-foreground tracking-tight leading-tight hover:text-primary-600 transition-colors duration-150 line-clamp-1">
+            {recipe.name}
+          </h3>
+        </button>
+
+        {/* Description */}
+        <p className="text-foreground/60 text-xs leading-relaxed line-clamp-2 mb-4 h-[36px] overflow-hidden">
+          {recipe.description}
+        </p>
+
+        {/* Tabs Bar Selector */}
+        <div className="flex border-b border-primary-100/50 mb-3 text-[11px] font-bold text-foreground/50">
+          <button
+            onClick={() => setActiveTab("info")}
+            className={`py-1.5 px-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1 -mb-[1px] ${
+              activeTab === "info"
+                ? "border-primary-500 text-primary-600 font-extrabold"
+                : "border-transparent hover:text-primary-500"
+            }`}
+          >
+            <BookOpen size={11} />
+            Info
+          </button>
+          <button
+            onClick={() => setActiveTab("ingredients")}
+            className={`py-1.5 px-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1 -mb-[1px] ${
+              activeTab === "ingredients"
+                ? "border-primary-500 text-primary-600 font-extrabold"
+                : "border-transparent hover:text-primary-500"
+            }`}
+          >
+            <ChefHat size={11} />
+            Bahan
+          </button>
+          <button
+            onClick={() => setActiveTab("procedure")}
+            className={`py-1.5 px-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1 -mb-[1px] ${
+              activeTab === "procedure"
+                ? "border-primary-500 text-primary-600 font-extrabold"
+                : "border-transparent hover:text-primary-500"
+            }`}
+          >
+            <Sparkles size={11} />
+            Langkah
+          </button>
+        </div>
+
+        {/* Scrollable Content Box */}
+        <div className="flex-1 overflow-y-auto pr-1 mb-4 text-xs">
+          {activeTab === "info" && (
+            <div className="h-full flex flex-col justify-between">
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-primary-50/40 border border-primary-100/30 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <Clock size={14} className="text-primary-500 mb-0.5 shrink-0" />
+                  <span className="text-[9px] uppercase font-bold text-foreground/40 tracking-wider">Waktu</span>
+                  <span className="text-[11px] font-bold text-foreground mt-0.5 truncate max-w-full">{recipe.prepTime}</span>
+                </div>
+                <div className="bg-primary-50/40 border border-primary-100/30 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <Users size={14} className="text-primary-500 mb-0.5 shrink-0" />
+                  <span className="text-[9px] uppercase font-bold text-foreground/40 tracking-wider">Porsi</span>
+                  <span className="text-[11px] font-bold text-foreground mt-0.5 truncate max-w-full">{recipe.servings}</span>
+                </div>
+                <div className="bg-primary-50/40 border border-primary-100/30 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <Flame size={14} className={`${diffColor} mb-0.5 shrink-0`} />
+                  <span className="text-[9px] uppercase font-bold text-foreground/40 tracking-wider">Tingkat</span>
+                  <span className={`text-[11px] font-bold mt-0.5 truncate max-w-full ${diffColor}`}>{recipe.difficulty}</span>
+                </div>
+              </div>
+              
+              <div className="bg-primary-50/20 border border-primary-100/20 rounded-xl p-2.5 flex-1 flex items-center justify-center">
+                <p className="text-[11px] text-foreground/60 leading-relaxed italic text-center font-medium">
+                  "Resep dirancang khusus oleh AI dengan perpaduan rasa dan takaran yang seimbang."
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "ingredients" && (
+            <div className="space-y-1.5">
+              {recipe.ingredients && recipe.ingredients.length > 0 ? (
+                recipe.ingredients.map((ingredient, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[11px] text-foreground/80 leading-relaxed">
+                    <Check size={11} className="text-primary-500 mt-0.5 shrink-0" />
+                    <span>{ingredient}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[11px] text-foreground/40 italic">Bahan tidak tersedia</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === "procedure" && (
+            <div className="space-y-2">
+              {recipe.procedure && recipe.procedure.length > 0 ? (
+                recipe.procedure.map((step, i) => (
+                  <div key={i} className="flex gap-2 text-[11px] text-foreground/80 leading-relaxed">
+                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-primary-100 text-primary-600 text-[9px] font-black flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 pt-0.5">{step}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[11px] text-foreground/40 italic">Langkah tidak tersedia</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* CTA Button */}
+        <button
+          onClick={() => onOpenModal(recipe)}
+          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs transition-colors duration-200 cursor-pointer shadow-sm"
+        >
+          <Eye size={13} />
+          Buka Resep Lengkap
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// Main Recommendation Section
 export default function RecommendationSection() {
   const [isLoading, setIsLoading] = useState(false);
-  const [recommendations, setRecommendations] = useState<Recipe[] | null>(
-    null,
-  );
+  const [recommendations, setRecommendations] = useState<Recipe[] | null>(null);
   const [userInput, setUserInput] = useState("");
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
 
   const handleGetRecommendations = async () => {
     if (!userInput.trim()) return;
     setIsLoading(true);
+    setRecommendations(null);
 
     try {
       const result = await generateRecipes(userInput);
       if (result.success && result.data) {
-        setRecommendations(result.data);
+        const recipes = result.data as Recipe[];
+        setRecommendations(recipes);
+        setIsLoading(false);
       } else {
-        alert(
-          "Gagal memuat resep: " + (result.error || "Kesalahan tak dikenal"),
-        );
+        const errorMsg = result.error || "Kesalahan tak dikenal";
+
+        if (
+          errorMsg.includes("sibuk") ||
+          errorMsg.includes("high demand") ||
+          errorMsg.includes("503")
+        ) {
+          alert(
+            "⏳ Server AI sedang sibuk karena banyak permintaan.\n\n" +
+              "Silakan coba lagi dalam beberapa detik. Kami menggunakan beberapa model AI sebagai backup untuk memastikan layanan tetap berjalan.",
+          );
+        } else {
+          alert("Gagal memuat resep: " + errorMsg);
+        }
+        setIsLoading(false);
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan sistem saat menghubungi AI.");
-    } finally {
+      alert(
+        "Terjadi kesalahan sistem saat menghubungi AI.\n\n" +
+          "Silakan coba lagi dalam beberapa saat.",
+      );
       setIsLoading(false);
     }
   };
 
+  const handleOpenModal = useCallback((recipe: Recipe) => {
+    setSelectedRecipe(recipe);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedRecipe(null);
+  }, []);
+
   return (
-    <section id="recommendation-section" className="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-primary-50">
-      {/* Wave Top Layer connecting from AboutSection */}
-      <div className="absolute top-0 left-0 w-full z-0 pointer-events-none leading-[0]">
-        <img
-          src="/assets/wave/wave.svg"
-          alt="Wave decoration"
-          className="w-full h-auto object-cover object-top"
-        />
-      </div>
+    <>
+      {/* Recipe Detail Modal */}
+      <RecipeModal recipe={selectedRecipe} onClose={handleCloseModal} />
 
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        {FLOATING_ITEMS.map((item, i) => (
-          <motion.div
-            key={i}
-            className="absolute opacity-15 filter blur-[2px] transition-opacity duration-1000"
-            style={{
-              left: item.left,
-              top: item.top,
-              width: item.size,
-              height: item.size,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              rotate: [0, 10, -10, 0],
-            }}
-            transition={{
-              duration: item.duration,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: item.delay,
-            }}
-          >
-            <Image
-              src={item.src}
-              alt="Floating Cake Decoration"
-              fill
-              className="object-contain"
-            />
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="max-w-5xl mx-auto relative z-10 pt-20">
-        <div className="text-center mb-16 relative">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tight"
-          >
-            Minta AI Meracik Resep
-          </motion.h2>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-foreground/70 text-lg max-w-2xl mx-auto mb-10 font-medium"
-          >
-            Ketikkan keinginan Anda, dan biarkan kecerdasan buatan KokiMugi
-            mencari kombinasi bahan dan teknik memanggang yang sempurna untuk
-            Anda.
-          </motion.p>
-
-          {/* AI Prompt Command Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
-            className="max-w-3xl mx-auto bg-white/80 backdrop-blur-xl border-2 border-white rounded-full p-2 pl-6 flex items-center gap-4 shadow-[0_8px_30px_rgba(116,77,53,0.1)] relative overflow-hidden"
-          >
-            {/* Shimmer effect */}
-            <motion.div
-              className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white to-transparent opacity-60 skew-x-12"
-              animate={{ x: ["-200%", "300%"] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            />
-
-            <div className="flex-1 flex items-center gap-3 relative z-10 overflow-hidden">
-              <Sparkles className="text-primary-500 shrink-0" size={24} />
-              <input
-                type="text"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isLoading) {
-                    handleGetRecommendations();
-                  }
-                }}
-                placeholder="Apa yang ingin Anda buat hari ini? (Contoh: Macaron Perancis)"
-                className="w-full bg-transparent border-none outline-none font-medium text-foreground placeholder:text-foreground/30 text-sm md:text-base"
-                suppressHydrationWarning
-              />
-            </div>
-
-            <Button
-              onClick={handleGetRecommendations}
-              isLoading={isLoading}
-              disabled={!userInput.trim() || isLoading}
-              flavor="chocolate"
-              size="md"
-              className="shrink-0 relative z-10 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Menganalisis..." : "Generate AI"}
-            </Button>
-          </motion.div>
+      <section
+        id="recommendation-section"
+        className="min-h-screen py-24 px-4 sm:px-6 relative z-20 bg-primary-50"
+      >
+        {/* Wave Top Layer */}
+        <div className="absolute top-0 left-0 w-full z-0 pointer-events-none leading-[0]">
+          <img
+            src="/assets/wave/wave.svg"
+            alt="Wave decoration"
+            className="w-full h-auto object-cover object-top"
+          />
         </div>
 
-        <AnimatePresence mode="wait">
-          {!recommendations && !isLoading && (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, filter: "blur(5px)" }}
-              transition={{ duration: 0.5 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        {/* Static Background Watermarks */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {FLOATING_ITEMS.map((item, i) => (
+            <div
+              key={i}
+              className="absolute opacity-[0.06] filter grayscale"
+              style={{
+                left: item.left,
+                top: item.top,
+                width: item.size * 0.9,
+                height: item.size * 0.9,
+              }}
             >
-              {MYSTERY_CARDS.map((card, index) => (
-                <div
-                  key={index}
-                  className="bg-white/50 backdrop-blur-md border-2 border-dashed border-primary-200/80 rounded-3xl p-8 h-[380px] flex flex-col items-center justify-center relative overflow-hidden group hover:bg-white/80 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 cursor-default"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary-100/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <Image
+                src={item.src}
+                alt="Cake Decoration Watermark"
+                fill
+                className="object-contain"
+              />
+            </div>
+          ))}
+        </div>
 
-                  <div className="relative z-10 flex flex-col items-center w-full h-full pt-4">
-                    {/* Glowing background behind image */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary-200 rounded-full blur-3xl opacity-30 group-hover:opacity-60 transition-opacity duration-500" />
+        <div className="max-w-5xl mx-auto relative z-10 pt-20">
+          {/* ── Section Header ── */}
+          <div className="text-center mb-16 relative">
+            <motion.h2
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-4xl md:text-5xl font-black text-foreground mb-4 tracking-tight"
+            >
+              Minta AI Meracik Resep
+            </motion.h2>
 
-                    <div className="relative w-40 h-40 mb-8 flex items-center justify-center">
+            <motion.p
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.08 }}
+              className="text-foreground/70 text-base max-w-2xl mx-auto mb-10 font-medium leading-relaxed"
+            >
+              Ketikkan keinginan Anda, dan biarkan kecerdasan buatan KokiMugi
+              mencari kombinasi bahan dan teknik memanggang yang sempurna untuk
+              Anda.
+            </motion.p>
+
+            {/* AI Prompt Command Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="max-w-3xl mx-auto bg-white border border-primary-200/50 rounded-full p-1.5 pl-5 flex items-center gap-3 shadow-[0_8px_25px_rgba(116,77,53,0.04)] relative overflow-hidden"
+            >
+              <div className="flex-1 flex items-center gap-2.5 relative z-10 overflow-hidden">
+                <Sparkles className="text-primary-500 shrink-0" size={20} />
+                <input
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      handleGetRecommendations();
+                    }
+                  }}
+                  placeholder="Apa yang ingin Anda buat hari ini? (Contoh: Macaron Perancis)"
+                  className="w-full bg-transparent border-none outline-none font-medium text-foreground placeholder:text-foreground/40 text-sm cursor-text"
+                  suppressHydrationWarning
+                />
+              </div>
+
+              <Button
+                variant="eclair"
+                flavor="chocolate"
+                size="sm"
+                isLoading={isLoading}
+                onClick={handleGetRecommendations}
+                disabled={!userInput.trim() || isLoading}
+                className="shrink-0 relative z-10 cursor-pointer"
+              >
+                {!isLoading && <Sparkles size={14} className="shrink-0" />}
+                Generate AI
+              </Button>
+            </motion.div>
+          </div>
+
+          {/* ── Content Area ── */}
+          <AnimatePresence mode="wait">
+            {/* Empty State */}
+            {!recommendations && !isLoading && (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              >
+                {MYSTERY_CARDS.map((card, index) => (
+                  <div
+                    key={index}
+                    className="bg-white/60 backdrop-blur-md border border-primary-100 rounded-2xl p-6 h-[320px] flex flex-col items-center justify-center relative overflow-hidden transition-all duration-300 hover:shadow-md hover:bg-white cursor-default"
+                  >
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-primary-100/30 rounded-full blur-2xl" />
+
+                    <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
                       <Image
                         src={card.icon}
                         alt="Mystery Cake"
                         fill
-                        className="object-contain opacity-20 filter grayscale blur-[2px] group-hover:blur-[1px] transition-all duration-500 scale-90 group-hover:scale-100"
+                        className="object-contain opacity-10 filter grayscale"
                       />
-                      {/* Floating Question Mark */}
-                      <motion.div
-                        animate={{ y: [0, -10, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 2.5 + index * 0.2,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute inset-0 flex items-center justify-center"
-                      >
-                        <div className="bg-white/90 backdrop-blur-md rounded-full w-14 h-14 flex items-center justify-center shadow-[0_8px_15px_rgba(214,100,93,0.2)] border border-primary-100 group-hover:scale-110 transition-transform duration-300">
-                          <span className="text-3xl font-black text-primary-500 drop-shadow-sm">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-white rounded-full w-12 h-12 flex items-center justify-center shadow-sm border border-primary-100">
+                          <span className="text-xl font-bold text-primary-500">
                             ?
-                          </span>
-                        </div>
-                      </motion.div>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-foreground mb-3 text-center">
-                      {card.title}
-                    </h3>
-                    <p className="text-center text-foreground/60 text-sm font-medium leading-relaxed px-2">
-                      {card.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </motion.div>
-          )}
-
-          {isLoading && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex flex-col items-center justify-center py-20"
-            >
-              <div className="relative w-32 h-32 mb-8">
-                <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-ping opacity-20" />
-                <div className="absolute inset-2 border-4 border-primary-200 rounded-full animate-spin border-t-primary-500" />
-                <div className="absolute inset-0 flex items-center justify-center text-primary-500">
-                  <ChefHat size={40} className="animate-bounce" />
-                </div>
-              </div>
-              <p className="text-xl font-bold text-primary-600 animate-pulse">
-                Menyiapkan keajaiban dari oven...
-              </p>
-            </motion.div>
-          )}
-
-          {recommendations && !isLoading && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, staggerChildren: 0.2 }}
-              className="flex flex-col gap-8"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {recommendations.map((rec, index) => (
-                  <motion.div
-                    key={rec.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{
-                      delay: index * 0.15,
-                      type: "spring",
-                      stiffness: 100,
-                    }}
-                    className="bg-white rounded-[2rem] shadow-[0_15px_40px_rgba(116,77,53,0.06)] border border-primary-100/50 overflow-hidden relative flex flex-col group hover:-translate-y-2 hover:shadow-[0_20px_50px_rgba(116,77,53,0.1)] transition-all duration-400"
-                  >
-                    {/* Decorative Header Background */}
-                    <div className="bg-gradient-to-b from-primary-50 to-white w-full p-6 sm:p-8 pb-10 relative overflow-hidden border-b-[2px] border-dashed border-primary-200/60">
-                      {/* Soft background blobs */}
-                      <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary-200/30 rounded-full blur-3xl pointer-events-none transition-transform duration-700 group-hover:scale-125" />
-                      <div className="absolute top-10 -left-10 w-32 h-32 bg-secondary-100/20 rounded-full blur-2xl pointer-events-none transition-transform duration-700 group-hover:scale-150" />
-
-                      <h3 className="text-2xl sm:text-3xl font-black text-foreground mb-3 leading-tight relative z-10 tracking-tight">
-                        {rec.name}
-                      </h3>
-                      <p className="text-foreground/70 text-[13px] sm:text-sm font-medium leading-relaxed relative z-10">
-                        {rec.description}
-                      </p>
-                    </div>
-
-                    {/* Stats Row - overlapping the dashed border beautifully */}
-                    <div className="flex justify-center -mt-6 relative z-20 px-6 sm:px-8">
-                      <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(116,77,53,0.06)] border border-primary-50 p-2.5 flex w-full justify-between items-center divide-x divide-primary-50">
-                        <div className="flex-1 flex flex-col items-center group/stat hover:scale-105 transition-transform">
-                          <Clock size={16} className="text-primary-400 mb-1" />
-                          <span className="text-[9px] uppercase tracking-wider text-foreground/40 font-bold">
-                            Waktu
-                          </span>
-                          <span className="text-[13px] font-bold text-foreground mt-0.5">
-                            {rec.prepTime}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center group/stat hover:scale-105 transition-transform">
-                          <Flame size={16} className="text-secondary-400 mb-1" />
-                          <span className="text-[9px] uppercase tracking-wider text-foreground/40 font-bold">
-                            Level
-                          </span>
-                          <span className="text-[13px] font-bold text-foreground mt-0.5">
-                            {rec.difficulty}
-                          </span>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center group/stat hover:scale-105 transition-transform">
-                          <Users size={16} className="text-blue-400 mb-1" />
-                          <span className="text-[9px] uppercase tracking-wider text-foreground/40 font-bold">
-                            Porsi
-                          </span>
-                          <span className="text-[13px] font-bold text-foreground mt-0.5">
-                            {rec.servings}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Details Body */}
-                    <div className="p-6 sm:p-8 pt-5 flex-grow flex flex-col gap-1 bg-white relative z-10">
-                      <Accordion
-                        title="Daftar Bahan"
-                        items={rec.ingredients}
-                        icon={ChefHat}
-                      />
-                      <Accordion
-                        title="Cara Membuat"
-                        items={rec.procedure}
-                        isList={true}
-                        icon={Sparkles}
-                      />
-                    </div>
-                  </motion.div>
+                    <h3 className="text-lg font-bold text-foreground mb-2 text-center relative z-10">
+                      {card.title}
+                    </h3>
+                    <p className="text-center text-foreground/60 text-xs font-medium leading-relaxed px-2 relative z-10">
+                      {card.desc}
+                    </p>
+                  </div>
                 ))}
-              </div>
+              </motion.div>
+            )}
 
-              {/* Regenerate Button */}
+            {/* Loading State */}
+            {isLoading && (
               <motion.div
+                key="loading"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="flex justify-center"
+                exit={{ opacity: 0 }}
+                className="flex flex-col items-center justify-center py-24"
               >
-                <button
-                  onClick={handleGetRecommendations}
-                  disabled={isLoading}
-                  className="group flex items-center gap-2.5 px-6 py-3 rounded-full bg-white border-2 border-primary-200 text-primary-600 font-bold text-sm shadow-sm hover:shadow-md hover:border-primary-400 hover:bg-primary-50 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <RotateCcw
-                    size={16}
-                    className="transition-transform duration-500 group-hover:-rotate-180"
-                  />
-                  Coba Rekomendasi Lain
-                </button>
+                <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+                  <span className="absolute inset-0 border-3 border-primary-100 rounded-full" />
+                  <span className="absolute inset-0 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                  <ChefHat size={28} className="text-primary-500" />
+                </div>
+                <p className="text-lg font-bold text-primary-600">
+                  Menyiapkan keajaiban dari oven...
+                </p>
+                <p className="text-xs text-primary-400 mt-1 font-medium">
+                  Resep & foto AI sedang dibuat
+                </p>
               </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            )}
 
-      {/* Wave Bottom Layer */}
-      <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none leading-[0]">
-        <img
-          src="/assets/wave/wave-rec.svg"
-          alt="Wave decoration"
-          className="w-full h-auto object-cover object-bottom"
-        />
-      </div>
-    </section>
+            {/* Results */}
+            {recommendations && !isLoading && (
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col gap-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {recommendations.map((rec, index) => (
+                    <RecipeCard
+                      key={rec.id}
+                      recipe={rec}
+                      index={index}
+                      onOpenModal={handleOpenModal}
+                    />
+                  ))}
+                </div>
+
+                {/* Regenerate Button */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="flex justify-center"
+                >
+                  <button
+                    onClick={handleGetRecommendations}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white border border-primary-200 text-primary-600 font-bold text-xs shadow-sm hover:bg-primary-50 active:scale-98 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    <RotateCcw size={13} />
+                    Coba Rekomendasi Lain
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Wave Bottom Layer */}
+        <div className="absolute bottom-0 left-0 w-full z-0 pointer-events-none leading-[0]">
+          <img
+            src="/assets/wave/wave-rec.svg"
+            alt="Wave decoration"
+            className="w-full h-auto object-cover object-bottom"
+          />
+        </div>
+      </section>
+    </>
   );
 }
+
